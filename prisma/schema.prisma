@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
   // output   = "../generated/prisma"
@@ -7,4 +6,207 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// USER ROLE
+enum UserRole {
+  PATIENT
+  THERAPIST
+  DOCTOR
+  ADMIN
+  SUPERADMIN
+}
+
+// GENDER
+enum Gender {
+  MALE
+  FEMALE
+  BOY
+  GIRL
+  OTHER
+}
+
+// APPOINTMENT STATUS
+enum AppointmentStatus {
+  PENDING
+  BOOKED
+  COMPLETED
+  RUNNING
+  MISSED
+  CANCELLED
+}
+
+// DEPARTMENT
+enum DepartmentType {
+  MEDICAL
+  OCCUPATIONAL
+  PSYCHOLOGICAL
+  PHYSIO
+  SPEECH_LANGUAGE
+  ADMINISTRATION
+  OTHER
+}
+
+// PAYMENT STATUS
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+// PAYMENT METHOD
+enum PaymentMethod {
+  NAGAD
+  BKASH
+  CARD
+  OTHER
+}
+
+// LANGUAGE
+enum LanguagePreference {
+  BANGLA
+  ENGLISH
+}
+
+// UPLOAD TYPE
+enum UploadedType {
+  REPORT
+  PRESCRIPTION
+  OTHER
+}
+
+// UPLOADED BY
+enum UploadedBy {
+  PATIENT
+  THERAPIST
+  DOCTOR
+  ADMIN
+  OTHER
+}
+
+
+// USER MODEL
+model User {
+  id                  String               @id @default(uuid())
+  userKey             String               @unique
+  email               String?              @unique
+  password            String
+  role                UserRole             @default(PATIENT)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  Patient             Patient?
+  Therapist           Therapist?
+  professionalProfile ProfessionalProfile?
+
+  @@map("users")
+}
+
+// PATIENT MODEL
+model Patient {
+  id               String    @id @default(uuid())
+  userId           String    @unique
+  firstName        String
+  lastName         String
+  gender           Gender
+  dateOfBirth      DateTime
+  phone            String
+  emergencyContact String?
+  presentAddress   String?
+  permanentAddress String?
+  profilePicture   String?
+  bloodGroup       String?
+
+  problems  String[]
+  diagnosis String?
+
+  user User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("patients")
+}
+
+// DEPARTMENT MODEL
+model Department {
+  id          String         @id @default(uuid())
+  name        DepartmentType @unique @default(OTHER)
+  description String?
+
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  ProfessionalProfile ProfessionalProfile?
+  Therapist           Therapist?           @relation(fields: [therapistId], references: [id])
+  therapistId         String?
+
+  @@map("departments")
+}
+
+
+// PROFESSIONAL MODEL
+model ProfessionalProfile {
+  id           String @id @default(uuid())
+  userId       String @unique
+  departmentId String @unique
+
+  firstName        String
+  lastName         String
+  gender           Gender
+  dateOfBirth      DateTime
+  phone            String
+  emergencyContact String?
+  presentAddress   String?
+  permanentAddress String?
+  profilePicture   String?
+  bloodGroup       String?
+
+  qualifications  String[]
+  experienceYears Int
+  specialization  String[]
+  consultationFee Int                @default(0)
+  availableOnline Boolean            @default(false)
+  languagesSpoken LanguagePreference @default(BANGLA)
+
+  user       User       @relation(fields: [userId], references: [id])
+  department Department @relation(fields: [departmentId], references: [id])
+}
+
+// THERAPIST MODEL
+model Therapist {
+  id     String @id @default(uuid())
+  userId String @unique
+
+  user User @relation(fields: [userId], references: [id])
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  Department Department[]
+
+  @@map("therapists")
+}
+
+model ScheduleAvailability {
+  id String @id @default(uuid())
+
+  dayOfWeek   Int     @default(0)
+  startTime   String
+  endTime     String
+  isAvailable Boolean
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model Appointment {
+  id String @id @default(uuid())
+
+  patientId   String
+  therapistId String
+  doctorId    String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  scheduleAvailabilityId String?
 }

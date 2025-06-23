@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  // output   = "../generated/prisma"
 }
 
 datasource db {
@@ -8,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// USER ROLE
+// ENUMS
 enum UserRole {
   PATIENT
   THERAPIST
@@ -17,7 +16,6 @@ enum UserRole {
   SUPERADMIN
 }
 
-// GENDER
 enum Gender {
   MALE
   FEMALE
@@ -26,7 +24,6 @@ enum Gender {
   OTHER
 }
 
-// APPOINTMENT STATUS
 enum AppointmentStatus {
   PENDING
   BOOKED
@@ -36,7 +33,6 @@ enum AppointmentStatus {
   CANCELLED
 }
 
-// DEPARTMENT
 enum DepartmentType {
   MEDICAL
   OCCUPATIONAL
@@ -47,7 +43,6 @@ enum DepartmentType {
   OTHER
 }
 
-// PAYMENT STATUS
 enum PaymentStatus {
   PENDING
   PAID
@@ -55,28 +50,30 @@ enum PaymentStatus {
   CANCELLED
 }
 
-// PAYMENT METHOD
 enum PaymentMethod {
   NAGAD
   BKASH
   CARD
-  OTHER
+  CASH
 }
 
-// LANGUAGE
 enum LanguagePreference {
   BANGLA
   ENGLISH
 }
 
-// UPLOAD TYPE
 enum UploadedType {
   REPORT
   PRESCRIPTION
   OTHER
 }
 
-// UPLOADED BY
+enum RecordsType {
+  REPORT
+  PRESCRIPTION
+  OTHER
+}
+
 enum UploadedBy {
   PATIENT
   THERAPIST
@@ -85,128 +82,358 @@ enum UploadedBy {
   OTHER
 }
 
+enum ScheduleAvailabilityType {
+  WEEKLY
+  MONTHLY
+  ONE_TIME
+  RANGE
+}
 
-// USER MODEL
+enum AppointmentType {
+  ONE_TO_ONE
+  GROUP
+}
+
+// USER
 model User {
-  id                  String               @id @default(uuid())
-  userKey             String               @unique
-  email               String?              @unique
-  password            String
-  role                UserRole             @default(PATIENT)
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  Patient             Patient?
-  Therapist           Therapist?
-  professionalProfile ProfessionalProfile?
+  id       String  @id @default(uuid())
+  userKey  String  @unique
+  email    String? @unique
+  password String
+
+  role        UserRole     @default(PATIENT)
+  userProfile UserProfile?
+
+  isActive   Boolean @default(true)
+  isVerified Boolean @default(false)
+  isBlocked  Boolean @default(false)
+  isDeleted  Boolean @default(false)
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  Receptionist   Receptionist? @relation(fields: [receptionistId], references: [id])
+  receptionistId String?
 
   @@map("users")
 }
 
-// PATIENT MODEL
-model Patient {
-  id               String    @id @default(uuid())
-  userId           String    @unique
+// USER PROFILE
+model UserProfile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
   firstName        String
   lastName         String
   gender           Gender
   dateOfBirth      DateTime
-  phone            String
+  phoneNumber      String
   emergencyContact String?
+  relationWithEC   String?
   presentAddress   String?
   permanentAddress String?
   profilePicture   String?
   bloodGroup       String?
 
-  problems  String[]
-  diagnosis String?
+  user         User                 @relation(fields: [userId], references: [id])
+  patient      Patient?
+  professional ProfessionalProfile?
+  admin        Admin?
+  receptionist Receptionist?
 
-  user User @relation(fields: [userId], references: [id])
+  @@map("userProfiles")
+}
+
+// RECEPTIONIST MODEL
+model Receptionist {
+  id            String @id @default(uuid())
+  userProfileId String @unique
+
+  userProfile     UserProfile @relation(fields: [userProfileId], references: [id])
+  patientsCreated Patient[]   @relation("PatientCreatedBy")
+
+  User        User[]
+  Appointment Appointment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@map("receptionists")
+}
+
+// PATIENT MODEL
+model Patient {
+  id            String  @id @default(uuid())
+  userProfileId String  @unique
+  createdById   String?
+
+  problems         String[]
+  diagnosis        String?
+  diagnosisBy      String?
+  diagnosisDate    DateTime?
+  records          RecordsType @default(PRESCRIPTION)
+  referredBy       String?
+  visitedDoctorIds String[]    @default([])
+
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id])
+
+  appointment         Appointment[]
+  AppointmentFeedback AppointmentFeedback[]
+  Payment             Payment[]
+
+  createdAt DateTime      @default(now())
+  createdBy Receptionist? @relation("PatientCreatedBy", fields: [createdById], references: [id])
+  updatedAt DateTime      @updatedAt
+
   @@map("patients")
-}
-
-// DEPARTMENT MODEL
-model Department {
-  id          String         @id @default(uuid())
-  name        DepartmentType @unique @default(OTHER)
-  description String?
-
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  ProfessionalProfile ProfessionalProfile?
-  Therapist           Therapist?           @relation(fields: [therapistId], references: [id])
-  therapistId         String?
-
-  @@map("departments")
-}
-
-
-// PROFESSIONAL MODEL
-model ProfessionalProfile {
-  id           String @id @default(uuid())
-  userId       String @unique
-  departmentId String @unique
-
-  firstName        String
-  lastName         String
-  gender           Gender
-  dateOfBirth      DateTime
-  phone            String
-  emergencyContact String?
-  presentAddress   String?
-  permanentAddress String?
-  profilePicture   String?
-  bloodGroup       String?
-
-  qualifications  String[]
-  experienceYears Int
-  specialization  String[]
-  consultationFee Int                @default(0)
-  availableOnline Boolean            @default(false)
-  languagesSpoken LanguagePreference @default(BANGLA)
-
-  user       User       @relation(fields: [userId], references: [id])
-  department Department @relation(fields: [departmentId], references: [id])
 }
 
 // THERAPIST MODEL
 model Therapist {
-  id     String @id @default(uuid())
-  userId String @unique
+  id             String   @id @default(uuid())
+  professionalId String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
-
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  Department Department[]
-
-  @@map("therapists")
+  professionalProfile ProfessionalProfile @relation(fields: [professionalId], references: [id])
 }
 
+// DOCTOR MODEL
+model Doctor {
+  id             String   @id @default(uuid())
+  professionalId String   @unique
+  licenseNumber  String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  professionalProfile ProfessionalProfile @relation(fields: [professionalId], references: [id])
+
+  @@map("doctors")
+}
+
+// ADMIN MODEL
+model Admin {
+  id            String @id @default(uuid())
+  userProfileId String @unique
+
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admins")
+}
+
+// DEPARTMENT
+model Department {
+  id            String                @id @default(uuid())
+  name          DepartmentType        @unique @default(OTHER)
+  description   String?
+  professionals ProfessionalProfile[]
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  appointment Appointment[]
+  payment     Payment[]
+
+  @@map("departments")
+}
+
+// PROFESSIONAL BASE MODEL
+model ProfessionalProfile {
+  id            String @id @default(uuid())
+  userProfileId String @unique
+  departmentId  String
+
+  qualifications  String[]
+  experienceYears Int
+  specializations String[]
+  consultationFee Int                @default(0)
+  availableOnline Boolean            @default(false)
+  languagesSpoken LanguagePreference @default(BANGLA)
+
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id])
+  department  Department  @relation(fields: [departmentId], references: [id])
+  therapist   Therapist?
+  doctor      Doctor?
+
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  appointment          Appointment[]
+  appointmentNote      AppointmentNote[]
+  scheduleAvailability ScheduleAvailability[]
+  appointmentFeedback  AppointmentFeedback[]
+  payment              Payment[]
+}
+
+// SCHEDULE AVAILABILITY
 model ScheduleAvailability {
-  id String @id @default(uuid())
+  id             String @id @default(uuid())
+  professionalId String
 
-  dayOfWeek   Int     @default(0)
-  startTime   String
-  endTime     String
-  isAvailable Boolean
+  type         ScheduleAvailabilityType @default(MONTHLY)
+  dayOfWeek    Int                      @default(0)
+  specificDate DateTime? // used if type = ONE_TIME
+  fromDate     DateTime? // for RANGE
+  toDate       DateTime? // for RANGE
+  dayOfMonth   Int? // e.g. 1st, 15th of month, for MONTHLY
+  startTime    String
+  endTime      String
+  isAvailable  Boolean                  @default(true)
 
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  professional ProfessionalProfile @relation(fields: [professionalId], references: [id])
+  appointment  Appointment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([professionalId, specificDate, startTime, endTime])
 }
 
+// APPOINTMENT
 model Appointment {
-  id String @id @default(uuid())
+  id                     String @id @default(uuid())
+  patientId              String
+  departmentId           String
+  professionalId         String
+  scheduleAvailabilityId String
+  creatorId              String
 
-  patientId   String
-  therapistId String
-  doctorId    String
+  appointmentDate DateTime
+  startTime       String
+  endTime         String
+  status          AppointmentStatus @default(PENDING)
 
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  patient      Patient               @relation(fields: [patientId], references: [id])
+  department   Department            @relation(fields: [departmentId], references: [id])
+  professional ProfessionalProfile   @relation(fields: [professionalId], references: [id])
+  schedule     ScheduleAvailability? @relation(fields: [scheduleAvailabilityId], references: [id])
+  creator      Receptionist?         @relation(fields: [creatorId], references: [id])
 
-  scheduleAvailabilityId String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  appointmentNote     AppointmentNote?
+  appointmentFeedback AppointmentFeedback?
+  payment             Payment?
+
+  @@unique([professionalId, patientId, departmentId, appointmentDate, startTime, endTime])
+  @@map("appointments")
 }
+
+model AppointmentNote {
+  id             String @id @default(uuid())
+  appointmentId  String @unique
+  professionalId String
+  note           String
+
+  professionalProfile ProfessionalProfile? @relation(fields: [professionalId], references: [id])
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("appointmentNotes")
+}
+
+// APPOINTMENT FEEDBACK
+model AppointmentFeedback {
+  id             String @id @default(uuid())
+  appointmentId  String @unique
+  patientId      String
+  professionalId String
+
+  rating  Int
+  comment String?
+
+  patient      Patient             @relation(fields: [patientId], references: [id])
+  professional ProfessionalProfile @relation(fields: [professionalId], references: [id])
+  appointment  Appointment         @relation(fields: [appointmentId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("appointmentFeedbacks")
+}
+
+model Payment {
+  id             String @id @default(uuid())
+  appointmentId  String @unique
+  patientId      String
+  professionalId String
+  departmentId   String
+  transactionId  String @unique
+
+  amount Int           @default(0)
+  status PaymentStatus @default(PENDING)
+  method PaymentMethod @default(CASH)
+
+  patient      Patient             @relation(fields: [patientId], references: [id])
+  professional ProfessionalProfile @relation(fields: [professionalId], references: [id])
+  department   Department          @relation(fields: [departmentId], references: [id])
+  appointment  Appointment         @relation(fields: [appointmentId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payments")
+}
+
+// model Notification {
+//   id            String   @id @default(uuid())
+//   userId        String
+//   appointmentId String?
+//   message       String
+//   isRead        Boolean  @default(false)
+//   createdAt     DateTime @default(now())
+//   updatedAt     DateTime @updatedAt
+
+//   user        User         @relation(fields: [userId], references: [id])
+//   appointment Appointment? @relation(fields: [appointmentId], references: [id])
+// }
+
+// model NotificationSetting {
+//   id           String   @id @default(uuid())
+//   userId       String   @unique
+//   emailEnabled Boolean  @default(true)
+//   smsEnabled   Boolean  @default(false)
+//   pushEnabled  Boolean  @default(true)
+//   createdAt    DateTime @default(now())
+//   updatedAt    DateTime @updatedAt
+
+//   user User @relation(fields: [userId], references: [id])
+// }
+
+// model DocumentUpload {
+//   id            String       @id @default(uuid())
+//   appointmentId String?
+//   uploadedBy    UploadedBy
+//   type          UploadedType
+//   fileUrl       String
+//   createdAt     DateTime     @default(now())
+//   updatedAt     DateTime     @updatedAt
+// }
+
+// model ChatMessage {
+//   id            String   @id @default(uuid())
+//   appointmentId String
+//   senderId      String
+//   receiverId    String
+//   message       String
+//   createdAt     DateTime @default(now())
+//   updatedAt     DateTime @updatedAt
+
+//   appointment Appointment @relation(fields: [appointmentId], references: [id])
+// }
+
+// model VideoCall {
+//   id            String    @id @default(uuid())
+//   appointmentId String    @unique
+//   roomLink      String
+//   startedAt     DateTime?
+//   endedAt       DateTime?
+//   status        String?
+//   duration      Int?
+//   createdAt     DateTime  @default(now())
+//   updatedAt     DateTime  @updatedAt
+
+//   appointment Appointment @relation(fields: [appointmentId], references: [id])
+// }

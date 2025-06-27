@@ -2,7 +2,7 @@
 CREATE TYPE "UserRole" AS ENUM ('PATIENT', 'THERAPIST', 'DOCTOR', 'ADMIN', 'SUPERADMIN');
 
 -- CreateEnum
-CREATE TYPE "Gender" AS ENUM ('MALE', 'FEMALE', 'BOY', 'GIRL', 'OTHER');
+CREATE TYPE "Gender" AS ENUM ('MALE', 'FEMALE', 'OTHER');
 
 -- CreateEnum
 CREATE TYPE "AppointmentStatus" AS ENUM ('PENDING', 'BOOKED', 'COMPLETED', 'RUNNING', 'MISSED', 'CANCELLED');
@@ -33,6 +33,12 @@ CREATE TYPE "ScheduleAvailabilityType" AS ENUM ('WEEKLY', 'MONTHLY', 'ONE_TIME',
 
 -- CreateEnum
 CREATE TYPE "AppointmentType" AS ENUM ('ONE_TO_ONE', 'GROUP');
+
+-- CreateEnum
+CREATE TYPE "PatientType" AS ENUM ('ADULT', 'PEADIATRIC');
+
+-- CreateEnum
+CREATE TYPE "DiagnosisType" AS ENUM ('NEURON', 'MUSCULOSKELETAL', 'PEADIATRIC', 'HAND', 'SPINAL');
 
 -- CreateTable
 CREATE TABLE "users" (
@@ -86,6 +92,8 @@ CREATE TABLE "patients" (
     "id" TEXT NOT NULL,
     "userProfileId" TEXT NOT NULL,
     "createdById" TEXT,
+    "patientType" "PatientType" NOT NULL DEFAULT 'ADULT',
+    "diagnosisType" "DiagnosisType" NOT NULL DEFAULT 'NEURON',
     "problems" TEXT[],
     "diagnosis" TEXT,
     "diagnosisBy" TEXT,
@@ -100,13 +108,16 @@ CREATE TABLE "patients" (
 );
 
 -- CreateTable
-CREATE TABLE "Therapist" (
+CREATE TABLE "therapists" (
     "id" TEXT NOT NULL,
     "professionalId" TEXT NOT NULL,
+    "specializations" TEXT[],
+    "consultationFee" INTEGER NOT NULL DEFAULT 0,
+    "availableOnline" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "Therapist_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "therapists_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -116,6 +127,9 @@ CREATE TABLE "doctors" (
     "licenseNumber" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "specializations" TEXT[],
+    "consultationFee" INTEGER NOT NULL DEFAULT 0,
+    "availableOnline" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "doctors_pkey" PRIMARY KEY ("id")
 );
@@ -148,9 +162,6 @@ CREATE TABLE "ProfessionalProfile" (
     "departmentId" TEXT NOT NULL,
     "qualifications" TEXT[],
     "experienceYears" INTEGER NOT NULL,
-    "specializations" TEXT[],
-    "consultationFee" INTEGER NOT NULL DEFAULT 0,
-    "availableOnline" BOOLEAN NOT NULL DEFAULT false,
     "languagesSpoken" "LanguagePreference" NOT NULL DEFAULT 'BANGLA',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -189,6 +200,7 @@ CREATE TABLE "appointments" (
     "startTime" TEXT NOT NULL,
     "endTime" TEXT NOT NULL,
     "status" "AppointmentStatus" NOT NULL DEFAULT 'PENDING',
+    "appointmentType" "AppointmentType" NOT NULL DEFAULT 'ONE_TO_ONE',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -254,7 +266,7 @@ CREATE UNIQUE INDEX "receptionists_userProfileId_key" ON "receptionists"("userPr
 CREATE UNIQUE INDEX "patients_userProfileId_key" ON "patients"("userProfileId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Therapist_professionalId_key" ON "Therapist"("professionalId");
+CREATE UNIQUE INDEX "therapists_professionalId_key" ON "therapists"("professionalId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "doctors_professionalId_key" ON "doctors"("professionalId");
@@ -287,9 +299,6 @@ CREATE UNIQUE INDEX "payments_appointmentId_key" ON "payments"("appointmentId");
 CREATE UNIQUE INDEX "payments_transactionId_key" ON "payments"("transactionId");
 
 -- AddForeignKey
-ALTER TABLE "users" ADD CONSTRAINT "users_receptionistId_fkey" FOREIGN KEY ("receptionistId") REFERENCES "receptionists"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "userProfiles" ADD CONSTRAINT "userProfiles_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -302,7 +311,7 @@ ALTER TABLE "patients" ADD CONSTRAINT "patients_userProfileId_fkey" FOREIGN KEY 
 ALTER TABLE "patients" ADD CONSTRAINT "patients_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "receptionists"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Therapist" ADD CONSTRAINT "Therapist_professionalId_fkey" FOREIGN KEY ("professionalId") REFERENCES "ProfessionalProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "therapists" ADD CONSTRAINT "therapists_professionalId_fkey" FOREIGN KEY ("professionalId") REFERENCES "ProfessionalProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "doctors" ADD CONSTRAINT "doctors_professionalId_fkey" FOREIGN KEY ("professionalId") REFERENCES "ProfessionalProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

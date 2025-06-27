@@ -19,8 +19,6 @@ enum UserRole {
 enum Gender {
   MALE
   FEMALE
-  BOY
-  GIRL
   OTHER
 }
 
@@ -94,6 +92,21 @@ enum AppointmentType {
   GROUP
 }
 
+// PATIENT TYPES
+enum PatientType {
+  ADULT
+  PEADIATRIC
+}
+
+// DIAGNOSIS TYPES
+enum DiagnosisType {
+  NEURON
+  MUSCULOSKELETAL
+  PEADIATRIC
+  HAND
+  SPINAL
+}
+
 // USER
 model User {
   id       String  @id @default(uuid())
@@ -111,7 +124,6 @@ model User {
 
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
-  Receptionist   Receptionist? @relation(fields: [receptionistId], references: [id])
   receptionistId String?
 
   @@map("users")
@@ -150,7 +162,7 @@ model Receptionist {
   userProfile     UserProfile @relation(fields: [userProfileId], references: [id])
   patientsCreated Patient[]   @relation("PatientCreatedBy")
 
-  User        User[]
+
   Appointment Appointment[]
 
   createdAt DateTime @default(now())
@@ -165,13 +177,15 @@ model Patient {
   userProfileId String  @unique
   createdById   String?
 
+  patientType      PatientType   @default(ADULT)
+  diagnosisType    DiagnosisType @default(NEURON)
   problems         String[]
   diagnosis        String?
   diagnosisBy      String?
   diagnosisDate    DateTime?
-  records          RecordsType @default(PRESCRIPTION)
+  records          RecordsType   @default(PRESCRIPTION)
   referredBy       String?
-  visitedDoctorIds String[]    @default([])
+  visitedDoctorIds String[]      @default([])
 
   userProfile UserProfile @relation(fields: [userProfileId], references: [id])
 
@@ -188,12 +202,19 @@ model Patient {
 
 // THERAPIST MODEL
 model Therapist {
-  id             String   @id @default(uuid())
-  professionalId String   @unique
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id             String @id @default(uuid())
+  professionalId String @unique
+
+  specializations String[]
+  consultationFee Int      @default(0)
+  availableOnline Boolean  @default(false)
 
   professionalProfile ProfessionalProfile @relation(fields: [professionalId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("therapists")
 }
 
 // DOCTOR MODEL
@@ -203,6 +224,10 @@ model Doctor {
   licenseNumber  String
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  specializations String[]
+  consultationFee Int      @default(0)
+  availableOnline Boolean  @default(false)
 
   professionalProfile ProfessionalProfile @relation(fields: [professionalId], references: [id])
 
@@ -245,9 +270,6 @@ model ProfessionalProfile {
 
   qualifications  String[]
   experienceYears Int
-  specializations String[]
-  consultationFee Int                @default(0)
-  availableOnline Boolean            @default(false)
   languagesSpoken LanguagePreference @default(BANGLA)
 
   userProfile UserProfile @relation(fields: [userProfileId], references: [id])
@@ -301,18 +323,21 @@ model Appointment {
   startTime       String
   endTime         String
   status          AppointmentStatus @default(PENDING)
+  appointmentType AppointmentType @default(ONE_TO_ONE)
 
   patient      Patient               @relation(fields: [patientId], references: [id])
   department   Department            @relation(fields: [departmentId], references: [id])
   professional ProfessionalProfile   @relation(fields: [professionalId], references: [id])
-  schedule     ScheduleAvailability? @relation(fields: [scheduleAvailabilityId], references: [id])
+  schedule     ScheduleAvailability   @relation(fields: [scheduleAvailabilityId], references: [id])
   creator      Receptionist?         @relation(fields: [creatorId], references: [id])
 
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
   appointmentNote     AppointmentNote?
   appointmentFeedback AppointmentFeedback?
   payment             Payment?
+
+  
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   @@unique([professionalId, patientId, departmentId, appointmentDate, startTime, endTime])
   @@map("appointments")
@@ -324,7 +349,7 @@ model AppointmentNote {
   professionalId String
   note           String
 
-  professionalProfile ProfessionalProfile? @relation(fields: [professionalId], references: [id])
+  professionalProfile ProfessionalProfile @relation(fields: [professionalId], references: [id])
 
   appointment Appointment @relation(fields: [appointmentId], references: [id])
 

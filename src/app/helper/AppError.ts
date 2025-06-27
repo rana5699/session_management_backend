@@ -7,7 +7,6 @@ class AppError extends Error {
     this.statusCode = statusCode;
     this.errorDetails = errorDetails;
 
-    // Use the provided stack or capture it from the error's instantiation point
     if (stack) {
       this.stack = stack;
     } else {

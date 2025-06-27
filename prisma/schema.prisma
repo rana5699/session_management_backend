@@ -107,6 +107,25 @@ enum DiagnosisType {
   SPINAL
 }
 
+enum CounterType {
+  PATIENT
+  PROFESSIONAL
+}
+
+model Counter {
+  id           String      @id @default(uuid())
+  type         CounterType
+  department   String?
+  date         DateTime
+  lastSerial   Int         @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("counters")
+}
+
+
 // USER
 model User {
   id       String  @id @default(uuid())

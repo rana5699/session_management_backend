@@ -112,6 +112,7 @@ model User {
   id       String  @id @default(uuid())
   userKey  String  @unique
   email    String? @unique
+  phone    String? @unique
   password String
 
   role        UserRole     @default(PATIENT)
@@ -137,7 +138,6 @@ model UserProfile {
   lastName         String
   gender           Gender
   dateOfBirth      DateTime
-  phoneNumber      String
   emergencyContact String?
   relationWithEC   String?
   presentAddress   String?

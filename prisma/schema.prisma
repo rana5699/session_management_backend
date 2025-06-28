@@ -13,7 +13,7 @@ enum UserRole {
   THERAPIST
   DOCTOR
   ADMIN
-  SUPERADMIN
+  SUPER_ADMIN
 }
 
 enum Gender {
@@ -113,18 +113,17 @@ enum CounterType {
 }
 
 model Counter {
-  id           String      @id @default(uuid())
-  type         CounterType
-  department   String?
-  date         DateTime
-  lastSerial   Int         @default(0)
+  id         String      @id @default(uuid())
+  type       CounterType
+  department String?
+  date       DateTime
+  lastSerial Int         @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("counters")
 }
-
 
 // USER
 model User {
@@ -142,8 +141,8 @@ model User {
   isBlocked  Boolean @default(false)
   isDeleted  Boolean @default(false)
 
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
   receptionistId String?
 
   @@map("users")
@@ -180,7 +179,6 @@ model Receptionist {
 
   userProfile     UserProfile @relation(fields: [userProfileId], references: [id])
   patientsCreated Patient[]   @relation("PatientCreatedBy")
-
 
   Appointment Appointment[]
 
@@ -238,17 +236,19 @@ model Therapist {
 
 // DOCTOR MODEL
 model Doctor {
-  id             String   @id @default(uuid())
-  professionalId String   @unique
-  licenseNumber  String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id             String @id @default(uuid())
+  professionalId String @unique
+
+  licenseNumber String
 
   specializations String[]
   consultationFee Int      @default(0)
   availableOnline Boolean  @default(false)
 
   professionalProfile ProfessionalProfile @relation(fields: [professionalId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("doctors")
 }
@@ -260,8 +260,9 @@ model Admin {
 
   userProfile UserProfile @relation(fields: [userProfileId], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  ProfessionalProfile ProfessionalProfile[]
 
   @@map("admins")
 }
@@ -283,9 +284,10 @@ model Department {
 
 // PROFESSIONAL BASE MODEL
 model ProfessionalProfile {
-  id            String @id @default(uuid())
-  userProfileId String @unique
+  id            String  @id @default(uuid())
+  userProfileId String  @unique
   departmentId  String
+  enteredId     String?
 
   qualifications  String[]
   experienceYears Int
@@ -293,6 +295,7 @@ model ProfessionalProfile {
 
   userProfile UserProfile @relation(fields: [userProfileId], references: [id])
   department  Department  @relation(fields: [departmentId], references: [id])
+  enteredBy   Admin?      @relation(fields: [enteredId], references: [id])
   therapist   Therapist?
   doctor      Doctor?
 
@@ -342,21 +345,20 @@ model Appointment {
   startTime       String
   endTime         String
   status          AppointmentStatus @default(PENDING)
-  appointmentType AppointmentType @default(ONE_TO_ONE)
+  appointmentType AppointmentType   @default(ONE_TO_ONE)
 
-  patient      Patient               @relation(fields: [patientId], references: [id])
-  department   Department            @relation(fields: [departmentId], references: [id])
-  professional ProfessionalProfile   @relation(fields: [professionalId], references: [id])
-  schedule     ScheduleAvailability   @relation(fields: [scheduleAvailabilityId], references: [id])
-  creator      Receptionist?         @relation(fields: [creatorId], references: [id])
+  patient      Patient              @relation(fields: [patientId], references: [id])
+  department   Department           @relation(fields: [departmentId], references: [id])
+  professional ProfessionalProfile  @relation(fields: [professionalId], references: [id])
+  schedule     ScheduleAvailability @relation(fields: [scheduleAvailabilityId], references: [id])
+  creator      Receptionist?        @relation(fields: [creatorId], references: [id])
 
   appointmentNote     AppointmentNote?
   appointmentFeedback AppointmentFeedback?
   payment             Payment?
 
-  
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([professionalId, patientId, departmentId, appointmentDate, startTime, endTime])
   @@map("appointments")

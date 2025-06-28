@@ -1,8 +1,8 @@
 import { UserRole } from '@prisma/client';
 import { NextFunction, Request, Response } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
-import AppError from './AppError';
 import status from 'http-status';
+import AppError from '../../helper/AppError';
 
 type TVerifyOptions = {
   allowedRoles?: UserRole[];

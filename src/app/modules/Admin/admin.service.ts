@@ -1,67 +1,78 @@
 import status from 'http-status';
 import AppError from '../../helper/AppError';
 import prisma from '../../helper/PrismaClient';
+import { generateUserKey } from '../Shared/generateUserKey';
+import { CounterType } from '@prisma/client';
+import { hashedPassword } from '../Shared/hashedPassword';
+import config from '../../config';
+import {
+  createProfessionalProfile,
+  createUser,
+  createUserProfile,
+} from '../Shared/baseCreateMethod';
 
 const createNewAdmin = async (adminData: any) => {
   try {
     const { user, userProfile, professionalProfile, scheduleAvailability } = adminData;
 
-    const existingUser = await prisma.user.findUnique({
-      where: { userKey: user.userKey },
+    // Hash the password
+    const modifyPassword = await hashedPassword(user.password || config.defaultPassword);
+
+    // Generate unique userKey
+    const userKey = await generateUserKey({
+      userType: CounterType.PROFESSIONAL,
+      deptCode: 'AD',
     });
 
-    if (existingUser) {
-      throw new AppError(status.CONFLICT, 'User with this userKey already exists');
-    }
+    const result = await prisma.$transaction(async (tx) => {
+      // Create a new user
+      const createdUser = await createUser({
+        user,
+        userKey,
+        password: modifyPassword,
+        role: 'ADMIN',
+        tx,
+      });
 
-    // Create a new user
-    const createdUser = await prisma.user.create({
-      data: {
-        ...user,
-        role: 'ADMIN', // Set the role to ADMIN
-      },
-    });
-
-    const createdUserProfile = await prisma.userProfile.create({
-      data: {
+      // Create a new user profile
+      const createdUserProfile = await createUserProfile({
         userId: createdUser.id,
-        ...userProfile,
-      },
-    });
+        userProfile,
+        tx,
+      });
 
-    const createdProfessionalProfile = await prisma.professionalProfile.create({
-      data: {
-        userProfileId: createdUserProfile.id, // এখানে userProfileId
-        ...professionalProfile,
-        departmentId: "f2b6259e-2990-4b3c-a918-2a9b7e5d3767",
-        scheduleAvailability: scheduleAvailability?.length
-          ? { create: scheduleAvailability }
-          : undefined,
-      },
-      include: {
-        scheduleAvailability: true,
-      },
-    });
-
-    const createdAdmin = await prisma.admin.create({
-      data: {
+      // Create a new professional profile
+      const createdProfessionalProfile = await createProfessionalProfile({
+        tx,
         userProfileId: createdUserProfile.id,
+        professionalProfile,
+        scheduleAvailability,
+      });
 
-        professionalProfile: {
-          connect: { id: createdProfessionalProfile.id },
+      // Create a new admin
+      const createdAdmin = await tx.admin.create({
+        data: {
+          userProfileId: createdUserProfile.id,
+
+          professionalProfile: {
+            connect: { id: createdProfessionalProfile.id },
+          },
         },
-      },
+      });
+
+      //  exclude password from return
+      const { password, ...safeUser } = createdUser;
+
+      return {
+        user: safeUser,
+        userProfile: createdUserProfile,
+        professionalProfile: createdProfessionalProfile,
+        admin: createdAdmin,
+      };
     });
 
-    console.log('✅ Admin and related profiles created successfully:', {
-      user: createdUser,
-      userProfile: createdUserProfile,
-      professionalProfile: createdProfessionalProfile,
-      admin: createdAdmin,
-    });
-    return createdUser;
-  } catch (error) {
-    console.error('❌ Error creating admin:', error);
+    return result;
+  } catch {
     throw new AppError(status.INTERNAL_SERVER_ERROR, 'Error creating admin');
   }
 };

@@ -9,6 +9,8 @@ const createNewAdmin = catchAsync(async (req:Request, res:Response) => {
 
     const newAdmin = await AdminService.createNewAdmin(adminData);
 
+    console.log(newAdmin,"newAdmin");
+
     responseHandler(
         res,
         status.CREATED,

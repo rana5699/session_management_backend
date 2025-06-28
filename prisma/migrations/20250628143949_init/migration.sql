@@ -1,5 +1,5 @@
 -- CreateEnum
-CREATE TYPE "UserRole" AS ENUM ('PATIENT', 'THERAPIST', 'DOCTOR', 'ADMIN', 'SUPERADMIN');
+CREATE TYPE "UserRole" AS ENUM ('PATIENT', 'THERAPIST', 'DOCTOR', 'ADMIN', 'SUPER_ADMIN');
 
 -- CreateEnum
 CREATE TYPE "Gender" AS ENUM ('MALE', 'FEMALE', 'OTHER');
@@ -38,13 +38,33 @@ CREATE TYPE "AppointmentType" AS ENUM ('ONE_TO_ONE', 'GROUP');
 CREATE TYPE "PatientType" AS ENUM ('ADULT', 'PEADIATRIC');
 
 -- CreateEnum
+CREATE TYPE "BloodGroup" AS ENUM ('A_POSITIVE', 'A_NEGATIVE', 'B_POSITIVE', 'B_NEGATIVE', 'AB_POSITIVE', 'AB_NEGATIVE', 'O_POSITIVE', 'O_NEGATIVE', 'UNKNOWN');
+
+-- CreateEnum
 CREATE TYPE "DiagnosisType" AS ENUM ('NEURON', 'MUSCULOSKELETAL', 'PEADIATRIC', 'HAND', 'SPINAL');
+
+-- CreateEnum
+CREATE TYPE "CounterType" AS ENUM ('PATIENT', 'PROFESSIONAL');
+
+-- CreateTable
+CREATE TABLE "counters" (
+    "id" TEXT NOT NULL,
+    "type" "CounterType" NOT NULL,
+    "department" TEXT,
+    "date" TIMESTAMP(3) NOT NULL,
+    "lastSerial" INTEGER NOT NULL DEFAULT 0,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "counters_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "userKey" TEXT NOT NULL,
     "email" TEXT,
+    "phone" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "role" "UserRole" NOT NULL DEFAULT 'PATIENT',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
@@ -53,7 +73,6 @@ CREATE TABLE "users" (
     "isDeleted" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    "receptionistId" TEXT,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
@@ -66,13 +85,12 @@ CREATE TABLE "userProfiles" (
     "lastName" TEXT NOT NULL,
     "gender" "Gender" NOT NULL,
     "dateOfBirth" TIMESTAMP(3) NOT NULL,
-    "phoneNumber" TEXT NOT NULL,
     "emergencyContact" TEXT,
     "relationWithEC" TEXT,
     "presentAddress" TEXT,
-    "permanentAddress" TEXT,
+    "permanentAddress" TEXT NOT NULL,
     "profilePicture" TEXT,
-    "bloodGroup" TEXT,
+    "bloodGroup" "BloodGroup" NOT NULL DEFAULT 'UNKNOWN',
 
     CONSTRAINT "userProfiles_pkey" PRIMARY KEY ("id")
 );
@@ -125,11 +143,11 @@ CREATE TABLE "doctors" (
     "id" TEXT NOT NULL,
     "professionalId" TEXT NOT NULL,
     "licenseNumber" TEXT NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
     "specializations" TEXT[],
     "consultationFee" INTEGER NOT NULL DEFAULT 0,
     "availableOnline" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "doctors_pkey" PRIMARY KEY ("id")
 );
@@ -160,6 +178,7 @@ CREATE TABLE "ProfessionalProfile" (
     "id" TEXT NOT NULL,
     "userProfileId" TEXT NOT NULL,
     "departmentId" TEXT NOT NULL,
+    "enteredId" TEXT,
     "qualifications" TEXT[],
     "experienceYears" INTEGER NOT NULL,
     "languagesSpoken" "LanguagePreference" NOT NULL DEFAULT 'BANGLA',
@@ -257,6 +276,9 @@ CREATE UNIQUE INDEX "users_userKey_key" ON "users"("userKey");
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "users_phone_key" ON "users"("phone");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "userProfiles_userId_key" ON "userProfiles"("userId");
 
 -- CreateIndex
@@ -324,6 +346,9 @@ ALTER TABLE "ProfessionalProfile" ADD CONSTRAINT "ProfessionalProfile_userProfil
 
 -- AddForeignKey
 ALTER TABLE "ProfessionalProfile" ADD CONSTRAINT "ProfessionalProfile_departmentId_fkey" FOREIGN KEY ("departmentId") REFERENCES "departments"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ProfessionalProfile" ADD CONSTRAINT "ProfessionalProfile_enteredId_fkey" FOREIGN KEY ("enteredId") REFERENCES "admins"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "ScheduleAvailability" ADD CONSTRAINT "ScheduleAvailability_professionalId_fkey" FOREIGN KEY ("professionalId") REFERENCES "ProfessionalProfile"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

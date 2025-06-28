@@ -98,6 +98,19 @@ enum PatientType {
   PEADIATRIC
 }
 
+// BLOOD GROUPS
+enum BloodGroup {
+  A_POSITIVE
+  A_NEGATIVE
+  B_POSITIVE
+  B_NEGATIVE
+  AB_POSITIVE
+  AB_NEGATIVE
+  O_POSITIVE
+  O_NEGATIVE
+  UNKNOWN
+}
+
 // DIAGNOSIS TYPES
 enum DiagnosisType {
   NEURON
@@ -130,28 +143,27 @@ model User {
   id       String  @id @default(uuid())
   userKey  String  @unique
   email    String? @unique
-  phone    String? @unique
+  phone    String  @unique
   password String
 
-  role        UserRole     @default(PATIENT)
-  userProfile UserProfile?
+  role UserRole @default(PATIENT)
 
   isActive   Boolean @default(true)
   isVerified Boolean @default(false)
   isBlocked  Boolean @default(false)
   isDeleted  Boolean @default(false)
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  receptionistId String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  userProfile    UserProfile?
 
   @@map("users")
 }
 
 // USER PROFILE
 model UserProfile {
-  id               String   @id @default(uuid())
-  userId           String   @unique
+  id               String     @id @default(uuid())
+  userId           String     @unique
   firstName        String
   lastName         String
   gender           Gender
@@ -159,9 +171,9 @@ model UserProfile {
   emergencyContact String?
   relationWithEC   String?
   presentAddress   String?
-  permanentAddress String?
+  permanentAddress String
   profilePicture   String?
-  bloodGroup       String?
+  bloodGroup       BloodGroup @default(UNKNOWN)
 
   user         User                 @relation(fields: [userId], references: [id])
   patient      Patient?
@@ -262,7 +274,7 @@ model Admin {
 
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
-  ProfessionalProfile ProfessionalProfile[]
+  professionalProfile ProfessionalProfile[]
 
   @@map("admins")
 }

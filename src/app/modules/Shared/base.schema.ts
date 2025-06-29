@@ -2,13 +2,13 @@ import { BloodGroup, Gender, LanguagePreference, ScheduleAvailabilityType, UserR
 import { nativeEnum, z } from 'zod';
 
 export const baseUserSchema = z.object({
-  userKey: z.string().min(1),
+  userKey: z.string().optional(),
   email: z.string().email().optional(),
   phone: z.string().min(6).optional(),
   password: z.string().min(6),
   role: z.nativeEnum(UserRole, {
     errorMap: () => ({ message: 'Invalid user role.' }),
-  }).default("PATIENT"),
+  }).optional(),
 });
 
 export const userProfileSchema = z.object({

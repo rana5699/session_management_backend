@@ -7,11 +7,7 @@ import {
 } from '../Shared/base.schema';
 
 export const createAdminSchema = z.object({
-  user: baseUserSchema.extend({
-    role: z.literal('ADMIN', {
-      errorMap: () => ({ message: 'Role must be ADMIN.' }),
-    }),
-  }),
+  user: baseUserSchema,
   userProfile: userProfileSchema,
 
   professionalProfile: professionalProfileSchema.extend({

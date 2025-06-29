@@ -11,12 +11,18 @@ export default {
   node: process.env.NODE_ENV,
   defaultPassword: process.env.DEFAULT_PASSWORD,
   databaseUrl: process.env.DATABASE_URL,
-  jwtAccess:{
+  jwtAccess: {
     jwtSecret: process.env.JWT_SECRET,
-  jwtExpireIn : process.env.JWT_EXPIRES_IN
+    jwtExpireIn: process.env.JWT_EXPIRES_IN,
   },
   jwtRefresh: {
     jwtSecret: process.env.JWT_REFRESH_SECRET,
     jwtExpireIn: process.env.JWT_REFRESH_EXPIRES_IN,
+  },
+
+  cloudinaryCloud: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    apiSecret: process.env.CLOUDINARY_API_SECRET,
   },
 };

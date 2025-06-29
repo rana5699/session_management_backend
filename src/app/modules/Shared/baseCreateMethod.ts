@@ -1,6 +1,7 @@
 // src/services/UserService.ts
 
 import { Prisma, PrismaClient, UserRole } from '@prisma/client';
+import prisma from '../../helper/PrismaClient';
 
 export interface CreateUserInput {
   user: Prisma.UserCreateInput;
@@ -64,19 +65,24 @@ export const createProfessionalProfile = async ({
   professionalProfile,
   scheduleAvailability,
 }: CreateProfessionalProfileInput) => {
+  // Step 1: Create `professionalProfile` inside transaction without scheduleAvailability
   const createdProfessionalProfile = await tx.professionalProfile.create({
     data: {
       ...professionalProfile,
       userProfileId,
       departmentId: professionalProfile.departmentId,
-      scheduleAvailability: scheduleAvailability?.length
-        ? { create: scheduleAvailability }
-        : undefined,
-    },
-    include: {
-      scheduleAvailability: true,
     },
   });
 
-  return createdProfessionalProfile;
+  // Step 2: Outside transaction, bulk create `scheduleAvailability`
+  const schedule = scheduleAvailability?.length
+    ? await prisma.scheduleAvailability.findMany({
+        where: { professionalId: createdProfessionalProfile.id },
+      })
+    : [];
+
+  return {
+    ...createdProfessionalProfile,
+    scheduleAvailability: schedule,
+  };
 };

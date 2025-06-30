@@ -14,8 +14,7 @@ export const handleZodValidationError = (err: ZodError) => {
   };
 };
 
-// Handle Prisma validation errors
-// ✅ Handle Prisma validation errors (e.g., field too long, enum mismatch)
+//  Handle Prisma validation errors (e.g., field too long, enum mismatch)
 export const handlePrismaValidationError = (err: Prisma.PrismaClientKnownRequestError) => {
   return {
     statusCode: status.BAD_REQUEST,
@@ -31,15 +30,17 @@ export const handlePrismaValidationError = (err: Prisma.PrismaClientKnownRequest
 
 /// Handle duplicate key (e.g., unique field conflict)
 export const handleDuplicateError = (err: any) => {
-  const field = err?.meta?.target?.[0] || "unknown";
-  return {
-    statusCode: status.CONFLICT,
-    message: "Duplicate Key Error",
-    errors: [
-      {
-        path: field,
-        message: `The value for "${field}" already exists. Please provide a unique value.`,
-      },
-    ],
-  };
+  if (err.code === 'P2002') {
+    const field = err?.meta?.target?.[0] || 'field';
+    return {
+      statusCode: status.CONFLICT,
+      message: 'Duplicate Error. Same Unique data already exist.',
+      errors: [
+        {
+          path: field,
+          message: `The ${field} already exists. Please use a different one.`,
+        },
+      ],
+    };
+  }
 };

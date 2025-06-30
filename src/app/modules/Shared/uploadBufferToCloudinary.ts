@@ -1,6 +1,6 @@
 import cloudinary from '../../helper/cloudinary';
 
-const uploadToCloudinary = (fileBuffer: Buffer, folder = 'projects') => {
+const uploadBufferToCloudinary  = (fileBuffer: Buffer, folder = 'projects') => {
   return new Promise((resolve, reject) => {
     cloudinary.uploader
       .upload_stream({ folder }, (error, result) => {
@@ -11,4 +11,4 @@ const uploadToCloudinary = (fileBuffer: Buffer, folder = 'projects') => {
   });
 };
 
-export default uploadToCloudinary;
+export default uploadBufferToCloudinary ;

@@ -7,10 +7,10 @@ import { hashedPassword } from '../Shared/hashedPassword';
 import config from '../../config';
 import { createUser, createUserProfile } from '../Shared/baseCreateMethod';
 
-
 const createNewAdmin = async (adminData: any) => {
   try {
-    const { user, userProfile, professionalProfile, scheduleAvailability } = adminData;
+    const { user, userProfile, professionalProfile, scheduleAvailability, profilePicture } =
+      adminData;
 
     // ✅ Step 1: Hash password outside transaction
     const modifyPassword = await hashedPassword(user.password || config.defaultPassword);
@@ -31,10 +31,12 @@ const createNewAdmin = async (adminData: any) => {
           tx,
         });
 
-
         const createdUserProfile = await createUserProfile({
           userId: createdUser.id,
-          userProfile,
+          userProfile: {
+            ...userProfile,
+            profilePicture,
+          },
           tx,
         });
 
@@ -63,7 +65,7 @@ const createNewAdmin = async (adminData: any) => {
         };
       },
       {
-        timeout: 15000, 
+        timeout: 15000,
         maxWait: 10000,
       }
     );
@@ -88,8 +90,7 @@ const createNewAdmin = async (adminData: any) => {
       admin: result.admin,
     };
   } catch (err) {
-    console.error('Admin creation failed:', err);
-    throw new AppError(status.INTERNAL_SERVER_ERROR, 'Error creating admin');
+    throw err;
   }
 };
 

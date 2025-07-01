@@ -3,7 +3,7 @@ import AppError from '../../helper/AppError';
 import prisma from '../../helper/PrismaClient';
 import { Department } from '@prisma/client';
 
-// This service handles the creation of new departments in the system.
+//creation of new departments in the system.
 const createNewDepartment = async (departmentData: Department) => {
   try {
     const existingDepartment = await prisma.department.findUnique({
@@ -28,6 +28,17 @@ const createNewDepartment = async (departmentData: Department) => {
   }
 };
 
+// get all departments .
+const getAllDepartments = async () => {
+  try {
+    return await prisma.department.findMany();
+  } catch (err) {
+    throw err;
+  }
+};
+
+
 export const DepartmentService = {
   createNewDepartment,
+  getAllDepartments,
 };

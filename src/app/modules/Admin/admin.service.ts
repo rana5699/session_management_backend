@@ -1,21 +1,32 @@
-import status from 'http-status';
-import AppError from '../../helper/AppError';
 import prisma from '../../helper/PrismaClient';
 import { generateUserKey } from '../Shared/generateUserKey';
-import { CounterType } from '@prisma/client';
+import { CounterType, Department } from '@prisma/client';
 import { hashedPassword } from '../Shared/hashedPassword';
 import config from '../../config';
 import { createUser, createUserProfile } from '../Shared/baseCreateMethod';
+import AppError from '../../helper/AppError';
+import status from 'http-status';
+import { AdminUpdateData, CreateAdminInput } from '../Department/department.constant';
+import {
+  findExistingUserProfile,
+  replaceScheduleAvailability,
+  updateProfessionalDepartment,
+  updateProfessionalProfile,
+  updateUserData,
+  updateUserProfileData,
+  validateDepartment,
+} from './helpers/update-admin-profile.service';
 
+// create new admin
 const createNewAdmin = async (adminData: any) => {
   try {
     const { user, userProfile, professionalProfile, scheduleAvailability, profilePicture } =
       adminData;
 
-    // ✅ Step 1: Hash password outside transaction
-    const modifyPassword = await hashedPassword(user.password || config.defaultPassword);
+    // Hash password outside transaction
+    const modifyPassword = await hashedPassword(user.password ?? config.defaultPassword);
 
-    // ✅ Step 2: Run transaction for atomic user creation
+    // Run transaction for atomic user creation
     const result = await prisma.$transaction(
       async (tx) => {
         const userKey = await generateUserKey(tx, {
@@ -70,7 +81,7 @@ const createNewAdmin = async (adminData: any) => {
       }
     );
 
-    // ✅ Step 3: Create scheduleAvailability outside transaction
+    // Create scheduleAvailability outside transaction
     if (scheduleAvailability?.length) {
       await prisma.scheduleAvailability.createMany({
         data: scheduleAvailability.map((item: any) => ({
@@ -80,7 +91,7 @@ const createNewAdmin = async (adminData: any) => {
       });
     }
 
-    // ✅ Step 4: Remove sensitive info before returning
+    //  Remove sensitive info before returning
     const { password, ...safeUser } = result.user;
 
     return {
@@ -94,6 +105,84 @@ const createNewAdmin = async (adminData: any) => {
   }
 };
 
+// get all admins
+const getAllAdmins = async () => {
+  try {
+    return await prisma.admin.findMany({
+      include: {
+        userProfile: {
+          include: {
+            user: true,
+          },
+        },
+        professionalProfile: {
+          include: {
+            department: {
+              select: {
+                name: true,
+                id: true,
+              },
+            },
+            scheduleAvailability: true,
+          },
+        },
+      },
+    });
+  } catch (err) {
+    throw err;
+  }
+};
+
+// update admin profile
+const updateAdminProfile = async (adminId: string, adminData: AdminUpdateData) => {
+  try {
+    const { user, userProfile, professionalProfile, profilePicture, scheduleAvailability } =
+      adminData;
+
+    const existingUserProfile = await findExistingUserProfile(adminId);
+
+    await validateDepartment(professionalProfile?.departmentId);
+
+    const updatedUserProfile = await updateUserProfileData(
+      existingUserProfile.id,
+      userProfile,
+      profilePicture
+    );
+
+    const updatedUser = await updateUserData(existingUserProfile.user, user);
+
+    const updatedProfessionalProfile = await updateProfessionalProfile(
+      existingUserProfile.professional?.id,
+      professionalProfile
+    );
+
+    await updateProfessionalDepartment(
+      existingUserProfile.professional?.departmentId,
+      professionalProfile?.departmentId
+    );
+
+    if (scheduleAvailability?.length) {
+      await replaceScheduleAvailability(
+        existingUserProfile.professional?.id,
+        updatedProfessionalProfile?.id,
+        scheduleAvailability
+      );
+    }
+
+    const { password, ...safeUser } = updatedUser;
+
+    return {
+      userProfile: updatedUserProfile,
+      user: safeUser,
+      professionalProfile: updatedProfessionalProfile,
+    };
+  } catch (err) {
+    throw err;
+  }
+};
+
 export const AdminService = {
   createNewAdmin,
+  getAllAdmins,
+  updateAdminProfile,
 };

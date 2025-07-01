@@ -1,13 +1,13 @@
 import prisma from '../../helper/PrismaClient';
 import { generateUserKey } from '../Shared/generateUserKey';
-import { CounterType, Department } from '@prisma/client';
+import { CounterType, UserRole } from '@prisma/client';
 import { hashedPassword } from '../Shared/hashedPassword';
 import config from '../../config';
 import { createUser, createUserProfile } from '../Shared/baseCreateMethod';
-import AppError from '../../helper/AppError';
-import status from 'http-status';
-import { AdminUpdateData, CreateAdminInput } from '../Department/department.constant';
+import { AdminUpdateData } from '../Department/department.constant';
 import {
+  checkEmail,
+  checkPhone,
   findExistingUserProfile,
   replaceScheduleAvailability,
   updateProfessionalDepartment,
@@ -16,12 +16,17 @@ import {
   updateUserProfileData,
   validateDepartment,
 } from './helpers/update-admin-profile.service';
+import queryUserProfiles, { IFilterOptions } from '../../queryBuilder/queryUserProfiles';
 
 // create new admin
 const createNewAdmin = async (adminData: any) => {
   try {
     const { user, userProfile, professionalProfile, scheduleAvailability, profilePicture } =
       adminData;
+
+    await checkEmail(user.email);
+
+    await checkPhone(user.phone);
 
     // Hash password outside transaction
     const modifyPassword = await hashedPassword(user.password ?? config.defaultPassword);
@@ -106,31 +111,85 @@ const createNewAdmin = async (adminData: any) => {
 };
 
 // get all admins
-const getAllAdmins = async () => {
-  try {
-    return await prisma.admin.findMany({
-      include: {
-        userProfile: {
-          include: {
-            user: true,
-          },
-        },
-        professionalProfile: {
-          include: {
-            department: {
-              select: {
-                name: true,
-                id: true,
-              },
-            },
-            scheduleAvailability: true,
-          },
-        },
-      },
-    });
-  } catch (err) {
-    throw err;
-  }
+// const getAllAdmins = async (filters: Partial<Parameters<typeof queryUserProfiles>[0]> = {}) => {
+//   try {
+//     const extendedFilters = {
+//       ...filters,
+//       allowedSortFields: ['createdAt', 'firstName', 'lastName', 'user.email', 'user.phone'],
+//     };
+
+//     console.log(extendedFilters, 'extendedFilters');
+
+//     const results = await queryUserProfiles({
+//       ...extendedFilters,
+//       // Force include only active admin users
+//       search: filters.search,
+//       gender: filters.gender,
+//       bloodGroup: filters.bloodGroup,
+//       departmentName: filters.departmentName,
+//       scheduleFilter: filters.scheduleFilter,
+//       page: filters.page,
+//       pageSize: filters.pageSize,
+//       sortBy: filters.sortBy,
+//       sortOrder: filters.sortOrder,
+//       allowedSortFields: extendedFilters.allowedSortFields,
+//     });
+
+//     const filteredAdmins = results.filter(
+//       (profile) =>
+//         profile.user?.role === UserRole.ADMIN &&
+//         profile.user?.isActive === true &&
+//         profile.user?.isDeleted === false &&
+//         profile.user?.isBlocked === false
+//     );
+
+//     // return await prisma.admin.findMany({
+//     //   where: {
+//     //     userProfile: {
+//     //       user: {
+//     //         isActive: true,
+//     //         isDeleted: false,
+//     //         isBlocked: false,
+//     //         role: UserRole.ADMIN,
+//     //       },
+//     //     },
+//     //   },
+//     //   include: {
+//     //     userProfile: {
+//     //       include: {
+//     //         user: true,
+//     //       },
+//     //     },
+//     //     professionalProfile: {
+//     //       include: {
+//     //         department: {
+//     //           select: {
+//     //             name: true,
+//     //             id: true,
+//     //           },
+//     //         },
+//     //         scheduleAvailability: true,
+//     //       },
+//     //     },
+//     //   },
+//     //   orderBy: {
+//     //     createdAt: 'desc',
+//     //   },
+//     // });
+
+//     return filteredAdmins;
+//   } catch (err) {
+//     throw err;
+//   }
+// };
+
+const getAllAdmins = async (filters: IFilterOptions) => {
+
+  console.log(filters.scheduleFilter, 'filters');
+
+  const results = await queryUserProfiles(filters);
+
+  return results;
 };
 
 // update admin profile

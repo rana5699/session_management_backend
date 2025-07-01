@@ -16,7 +16,7 @@ export const createUser = async ({
   user,
   userKey,
   password,
-  role = 'PATIENT',
+  role,
   tx,
 }: CreateUserInput) => {
   const createdUser = await tx.user.create({

@@ -3,6 +3,19 @@ import { ProfessionalProfile, ScheduleAvailability, User, UserProfile } from '@p
 import prisma from '../../../helper/PrismaClient';
 import AppError from '../../../helper/AppError';
 
+export const checkEmail = async (email: string) => {
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (user) {
+    throw new AppError(status.CONFLICT, 'Email already exists');
+  }
+};
+
+export const checkPhone = async (phone: string) => {
+  const user = await prisma.user.findUnique({ where: { phone } });
+  if (user) {
+    throw new AppError(status.CONFLICT, 'Phone number already exists');
+  }
+};
 export const findExistingUserProfile = async (adminId: string) => {
   const profile = await prisma.userProfile.findUnique({
     where: { id: adminId },

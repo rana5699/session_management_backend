@@ -1,5 +1,10 @@
-import { BloodGroup, Gender, Prisma, ScheduleAvailabilityType } from '@prisma/client';
+import { buildGenderCondition } from './filters/buildGenderCondition';
+import { buildSearchCondition } from './filters/buildSearchCondition';
+import { Prisma, ScheduleAvailabilityType } from '@prisma/client';
 import prisma from '../helper/PrismaClient';
+import { buildBloodGroupCondition } from './filters/buildBloodGroupCondition';
+import { buildDepartmentCondition } from './filters/buildDepartmentCondition';
+import { buildScheduleCondition } from './filters/buildScheduleCondition';
 
 export interface IFilterOptions {
   search?: string;
@@ -19,8 +24,8 @@ export interface IFilterOptions {
   };
   page?: number;
   pageSize?: number;
-  sortBy?: string; // উদাহরণ: "firstName", "createdAt", "user.email"
-  sortOrder?: 'asc' | 'desc'; // "asc" or "desc"
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
   allowedSortFields: string[];
 }
 
@@ -39,64 +44,18 @@ const queryUserProfiles = async (filters: IFilterOptions) => {
   } = filters;
 
   // Search condition
-  const searchCondition: Prisma.UserProfileWhereInput | undefined = search
-    ? {
-        OR: [
-          { firstName: { contains: search, mode: 'insensitive' } },
-          { lastName: { contains: search, mode: 'insensitive' } },
-          { user: { email: { contains: search, mode: 'insensitive' } } },
-          { user: { phone: { contains: search, mode: 'insensitive' } } },
-        ],
-      }
-    : undefined;
-
+  const searchCondition = buildSearchCondition(search);
   // Gender condition
-  const genderCondition: Prisma.UserProfileWhereInput | undefined = gender
-    ? { gender: gender as Gender }
-    : undefined;
-
+  const genderCondition = buildGenderCondition(gender);
   // BloodGroup condition
-  const bloodGroupCondition: Prisma.UserProfileWhereInput | undefined = bloodGroup
-    ? { bloodGroup: bloodGroup as BloodGroup }
-    : undefined;
-
+  const bloodGroupCondition = buildBloodGroupCondition(bloodGroup);
   // DepartmentName condition
-  const departmentNameCondition: Prisma.UserProfileWhereInput | undefined = departmentName
-    ? {
-        professional: {
-          is: {
-            department: {
-              name: departmentName as Prisma.EnumDepartmentTypeFilter,
-            },
-          },
-        },
-      }
-    : undefined;
-
+  const departmentNameCondition = buildDepartmentCondition(departmentName);
   // Schedule condition: if empty, make undefined instead of {}
-  const scheduleCondition: Prisma.UserProfileWhereInput | undefined = scheduleFilter
-    ? {
-        professional: {
-          scheduleAvailability: {
-            some: {
-              ...(scheduleFilter.type && { type: scheduleFilter.type }),
-              ...(scheduleFilter.dayOfWeek !== undefined && { dayOfWeek: scheduleFilter.dayOfWeek }),
-              ...(scheduleFilter.specificDate && { specificDate: scheduleFilter.specificDate }),
-              ...(scheduleFilter.fromDate && { fromDate: { gte: scheduleFilter.fromDate } }),
-              ...(scheduleFilter.toDate && { toDate: { lte: scheduleFilter.toDate } }),
-              ...(scheduleFilter.dayOfMonth && { dayOfMonth: scheduleFilter.dayOfMonth }),
-              ...(scheduleFilter.startTime && { startTime: scheduleFilter.startTime }),
-              ...(scheduleFilter.endTime && { endTime: scheduleFilter.endTime }),
-              ...(scheduleFilter.isAvailable !== undefined && { isAvailable: scheduleFilter.isAvailable }),
-            },
-          },
-        },
-      }
-    : undefined;
+  const scheduleCondition = buildScheduleCondition(scheduleFilter);
 
   // Collect all conditions; only add if defined and not empty object
   const andConditions: Prisma.UserProfileWhereInput[] = [];
-
   if (searchCondition) andConditions.push(searchCondition);
   if (genderCondition) andConditions.push(genderCondition);
   if (bloodGroupCondition) andConditions.push(bloodGroupCondition);
@@ -112,7 +71,6 @@ const queryUserProfiles = async (filters: IFilterOptions) => {
   });
 
   const totalPages = Math.ceil(totalRecords / pageSize);
-
   // Validate sort field
   const isValidSortField = allowedSortFields.includes(sortBy || '');
   const finalSortBy = isValidSortField ? sortBy! : 'firstName';
